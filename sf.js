@@ -169,17 +169,21 @@ function SigFigNum (num) {
 }
 
 function roundBySigFigs (num, a, b, logger, sigFigs) {
-  // The String(Number()) is necessary because toPrecision() sometimes returns
-  // an exponential number ('1.2e5').
   if (sigFigs) {
     log += ' sigfigs;'
   } else {
     sigFigs = Math.min(a.sigFigs, b.sigFigs)
     log += ' ' + sigFigs + ' sigfigs (' + a.sigFigs + ' vs ' + b.sigFigs + ');'
   }
-  var str = String(Number(num.toPrecision(sigFigs)))
-  if (str.length === sigFigs) {
-    str += '.'
+  if (sigFigs >= num.toFixed().length) {
+    var decimalPlaces = sigFigs - num.toFixed().length
+    var str = num.toFixed(decimalPlaces)
+  } else if (sigFigs === num.toFixed().length) {
+    var str = num.toFixed() + '.'
+  } else {
+    // The String(Number()) is necessary because toPrecision() sometimes
+    // returns an exponential number ('1.2e5').
+    var str = String(Number(num.toPrecision(sigFigs)))
   }
   var ret = new SigFigNum(str)
   log += ' return ' + ret.val
@@ -349,11 +353,13 @@ function calculateShell (inp, logger) {
         if (!curobjs.parent) {
           throw new Error('bad parentheses')
         } else {
-          curobjs.recalculate(logger)
           curobjs = curobjs.parent
         }
       } else if (type === objTypes.OPENPAREN) {
-        flushInputNumber()
+        if (prevType === objTypes.NUMBER
+         || prevType === objTypes.OPERATOR) {
+          flushInputNumber()
+        }
         curobjs.push(new Parentheses(curobjs))
         curobjs = curobjs[curobjs.length - 1]
       } else if (prevType !== objTypes.UNSPECIFIED
