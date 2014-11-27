@@ -216,22 +216,26 @@ function roundByDecimalPlaces (num, a, b, logger) {
 var ops = {
   '+': function (a, b, logger) {
     var tmpNum = Number(a.val) + Number(b.val)
-    log += a.val + ' + ' + b.val + '; addition so round by'
+    log += a.val + ' + ' + b.val + '; vanilla result ' + tmpNum
+         + '; addition so round by'
     return roundByDecimalPlaces(tmpNum, a, b, logger)
   }
 , '-': function (a, b, logger) {
     var tmpNum = Number(a.val) - Number(b.val)
-    log += a.val + ' - ' + b.val + '; subtraction so round by'
+    log += a.val + ' - ' + b.val + '; vanilla result ' + tmpNum
+         + '; subtraction so round by'
     return roundByDecimalPlaces(tmpNum, a, b, logger)
   }
 , '*': function (a, b, logger) {
     var tmpNum = Number(a.val) * Number(b.val)
-    log += a.val + ' * ' + b.val + '; multiplication so round by'
+    log += a.val + ' * ' + b.val + '; vanilla result ' + tmpNum
+         + '; multiplication so round by'
     return roundBySigFigs(tmpNum, a, b, logger)
   }
 , '/': function (a, b, logger) {
     var tmpNum = Number(a.val) / Number(b.val)
-    log += a.val + ' / ' + b.val + '; division so round by'
+    log += a.val + ' / ' + b.val + '; vanilla result ' + tmpNum
+         + '; division so round by'
     return roundBySigFigs(tmpNum, a, b, logger)
   }
 }
