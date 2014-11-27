@@ -1,0 +1,32 @@
+{
+  "name": "sigfigs",
+  "version": "0.0.0-alpha.1",
+  "description": "Significant figures-aware calculator",
+  "author": "Timothy Gu <timothygu99@gmail.com>",
+  "bin": {
+    "module-name": "./bin/cli.js"
+  },
+  "main": "sf.js",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/TimothyGu/sigfigs"
+  },
+  "bugs": {
+    "url": "https://github.com/TimothyGu/sigfigs/issues"
+  },
+  "keywords": [
+    "math"
+  ],
+  "dependencies": {
+  },
+  "devDependencies": {
+    "vows": "^0.7.0",
+    "assume": "<1.0.0 || >=2.3.1 <2.4.5 || >=2.5.2 <3.0.0",
+    "pre-commit": "*"
+  },
+  "preferGlobal": true,
+  "private": true,
+  
+  
+  "license": "MIT"
+}
