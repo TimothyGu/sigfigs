@@ -6,6 +6,9 @@
   "bin": {
     "module-name": "./cli.js"
   },
+  "script": {
+    "build": "cp -a node_modules/bootstrap/dist/css ."
+  },
   "main": "sf.js",
   "repository": {
     "type": "git",
@@ -18,10 +21,9 @@
     "math"
   ],
   "dependencies": {
+    "bootstrap": "~3.3.1"
   },
-  "devDependencies": {
-  },
+  "devDependencies": {},
   "preferGlobal": true,
-  
   "license": "MIT"
 }

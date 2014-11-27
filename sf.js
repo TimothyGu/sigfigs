@@ -22,8 +22,6 @@
  * THE SOFTWARE.
  */
 
-var debug = require('debug')
-
 // From https://github.com/kangax/array_subclassing/blob/master/subarray.js
 // by @kangax (Juriy Zaytsev).
 var makeSubArray = (function () {
@@ -86,6 +84,9 @@ var objTypes = Object.freeze({
 , CLOSEPAREN : 4
 })
 
+// Global variable yay!
+log = ''
+
 function checkType (inp, prev) {
   if (/[0-9.x]/.test(inp)) {
     return objTypes.NUMBER
@@ -114,7 +115,6 @@ function SigFigNum (num) {
   num = num.replace(/([0-9]+)\.?([0-9]+)?x/, '$1.$200000000000000000000')
   var pieces = num.split('.')
   if (pieces.length === 0 || pieces.length > 2) {
-    this = {}
     return
     // throw new Error('Error parsing "' + num + '" as a number')
   }
@@ -168,50 +168,71 @@ function SigFigNum (num) {
                             : intStr.length - this.sigFigs + 1
 }
 
-function roundBySigFigs (num, a, b, sigFigs) {
-  sigFigs = sigFigs || Math.min(a.sigFigs, b.sigFigs)
+function roundBySigFigs (num, a, b, logger, sigFigs) {
   // The String(Number()) is necessary because toPrecision() sometimes returns
   // an exponential number ('1.2e5').
+  if (sigFigs) {
+    log += ' sigfigs;'
+  } else {
+    sigFigs = Math.min(a.sigFigs, b.sigFigs)
+    log += ' ' + sigFigs + ' sigfigs (' + a.sigFigs + ' vs ' + b.sigFigs + ');'
+  }
   var str = String(Number(num.toPrecision(sigFigs)))
   if (str.length === sigFigs) {
     str += '.'
   }
-  return new SigFigNum(str)
+  var ret = new SigFigNum(str)
+  log += ' return ' + ret.val
+  logger(log)
+  log = ''
+  return ret
 }
 
-function roundByDecimalPlaces (num, a, b) {
+function roundByDecimalPlaces (num, a, b, logger) {
   var accurateInt = a.accurateInt && b.accurateInt
   var decPlaces = Math.min(a.frac.length, b.frac.length)
   var ret = num.toFixed(decPlaces)
+  log += ' ' + decPlaces + ' fractional places '
+       + '(' + a.frac.length + ' vs ' + b.frac.length + ');'
   if (accurateInt) {
     ret += !decPlaces ? '.' : ''
-    return new SigFigNum(ret)
+    ret = new SigFigNum(ret)
+    log += ' integer part is guaranteed to be accurate; return ' + ret.val
+    logger(log)
+    log = ''
+    return ret
   } else {
     var intDecimalPlaces = Math.max(a.mostAccurateIntPlace,
                                     b.mostAccurateIntPlace)
+    log += ' no fractional part so round by 10^' + (intDecimalPlaces - 1)
+         + ' intervals ('
+         + (a.mostAccurateIntPlace - 1) + ' vs '
+         + (b.mostAccurateIntPlace - 1) + ') using'
     var sigFigs = String(ret).length - (intDecimalPlaces - 1)
-    return roundBySigFigs(+ret, null, null, sigFigs)
+    return roundBySigFigs(+ret, null, null, logger, sigFigs)
   }
 }
 
 var ops = {
-  '+': function (a, b) {
+  '+': function (a, b, logger) {
     var tmpNum = Number(a.val) + Number(b.val)
-    return roundByDecimalPlaces(tmpNum, a, b)
+    log += a.val + ' + ' + b.val + '; addition so round by'
+    return roundByDecimalPlaces(tmpNum, a, b, logger)
   }
-, '-': function (a, b) {
+, '-': function (a, b, logger) {
     var tmpNum = Number(a.val) - Number(b.val)
-    return roundByDecimalPlaces(tmpNum, a, b)
+    log += a.val + ' - ' + b.val + '; subtraction so round by'
+    return roundByDecimalPlaces(tmpNum, a, b, logger)
   }
-, '*': function (a, b) {
-    console.log(a)
-    console.log(b)
+, '*': function (a, b, logger) {
     var tmpNum = Number(a.val) * Number(b.val)
-    return roundBySigFigs(tmpNum, a, b)
+    log += a.val + ' * ' + b.val + '; multiplication so round by'
+    return roundBySigFigs(tmpNum, a, b, logger)
   }
-, '/': function (a, b) {
+, '/': function (a, b, logger) {
     var tmpNum = Number(a.val) / Number(b.val)
-    return roundBySigFigs(tmpNum, a, b)
+    log += a.val + ' / ' + b.val + '; division so round by'
+    return roundBySigFigs(tmpNum, a, b, logger)
   }
 }
 
@@ -220,32 +241,32 @@ function Parentheses (parent) {
   arr.val = new SigFigNum('0' /*TODO*/)
   arr.parent = parent || null
   arr.type = objTypes.OPENPAREN
-  arr.recalculate = function () {
+  arr.recalculate = function (logger) {
     var total
     var skip = 0
 
     // Preemption to make multiplication together
-    for (var i = 1; i < this.length; i++) {
-      var obj = this[i]
-      if (obj.type === objTypes.OPERATOR && /[*\/]/.test(obj.op)
-       && this[i + 2]) {
-        var newobj = new Parentheses(this)
+    // for (var i = 1; i < this.length; i++) {
+    //   var obj = this[i]
+    //   if (obj.type === objTypes.OPERATOR && /[*\/]/.test(obj.op)
+    //    && this[i + 2]) {
+    //     var newobj = new Parentheses(this)
 
-        if (this[i - 1].type === objTypes.OPENPAREN) {
-          var val = obj.recalculate()
-        } else if (this[i - 1].type === objTypes.NUMBER) {
-          var val = obj
-        } else {
-          throw new Error('not number or paren')
-        }
-        newobj.push(this[i - 1])
-        newobj.push(obj)
-        newobj.push(this[i + 1])
-        this[i - 1] = newobj
-        this[i].type = objTypes.UNSPECIFIED
-        this[i + 1].type = objTypes.UNSPECIFIED
-      }
-    }
+    //     if (this[i - 1].type === objTypes.OPENPAREN) {
+    //       var val = obj.recalculate(logger)
+    //     } else if (this[i - 1].type === objTypes.NUMBER) {
+    //       var val = obj
+    //     } else {
+    //       throw new Error('not number or paren')
+    //     }
+    //     newobj.push(this[i - 1])
+    //     newobj.push(obj)
+    //     newobj.push(this[i + 1])
+    //     this[i - 1] = newobj
+    //     this[i].type = objTypes.UNSPECIFIED
+    //     this[i + 1].type = objTypes.UNSPECIFIED
+    //   }
+    // }
 
     var init = false
     var calculation = []
@@ -261,7 +282,7 @@ function Parentheses (parent) {
         } else if (obj.type === objTypes.OPERATOR) {
           throw new Error('bad calc')
         } else if (obj.type === objTypes.OPENPAREN) {
-          total = obj.recalculate()
+          total = obj.recalculate(logger)
         }
         init = true
         continue
@@ -278,13 +299,13 @@ function Parentheses (parent) {
         if (!calculating) {
           throw new Error('two numbers together' + i)
         } else {
-          total = ops[calculation[0]](calculation[1], obj)
+          total = ops[calculation[0]](calculation[1], obj, logger)
         }
       } else if (obj.type === objTypes.OPENPAREN) {
         if (!calculating) {
           throw new Error('two numbers together' + i)
         } else {
-          total = ops[calculation[0]](calculation[1], obj.recalculate())
+          total = ops[calculation[0]](calculation[1], obj.recalculate(logger), logger)
         }
       }
     }
@@ -305,7 +326,7 @@ function newObj (inp, type) {
   }
 }
 
-function calculateShell (inp) {
+function calculateShell (inp, logger) {
   // Sanitize input of non-numeric-or-operator characters
   inp = (new String(inp)).split('').filter(/./.test.bind(/[0-9.x+\-*\/()]/))
 
@@ -324,7 +345,7 @@ function calculateShell (inp) {
         if (!curobjs.parent) {
           throw new Error('bad parentheses')
         } else {
-          curobjs.recalculate()
+          curobjs.recalculate(logger)
           curobjs = curobjs.parent
         }
       } else if (type === objTypes.OPENPAREN) {
@@ -346,11 +367,13 @@ function calculateShell (inp) {
   }
 
   while (curobjs !== objs) {
-    curobjs.recalculate()
+    curobjs.recalculate(logger)
     curobjs = curobjs.parent
   }
   console.log(objs)
-  return objs.recalculate()
+  return objs.recalculate(logger)
 }
 
-module.exports = calculateShell
+if (typeof module !== 'undefined') {
+  module.exports = calculateShell
+}
