@@ -4,7 +4,7 @@
   "description": "Significant figures-aware calculator",
   "author": "Timothy Gu <timothygu99@gmail.com>",
   "bin": {
-    "module-name": "./bin/cli.js"
+    "module-name": "./cli.js"
   },
   "main": "sf.js",
   "repository": {
@@ -20,13 +20,8 @@
   "dependencies": {
   },
   "devDependencies": {
-    "vows": "^0.7.0",
-    "assume": "<1.0.0 || >=2.3.1 <2.4.5 || >=2.5.2 <3.0.0",
-    "pre-commit": "*"
   },
   "preferGlobal": true,
-  "private": true,
-  
   
   "license": "MIT"
 }
