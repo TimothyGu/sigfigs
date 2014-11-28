@@ -121,9 +121,9 @@ function SigFigNum (num) {
   if (pieces)
 
   this.type = objTypes.NUMBER
-
+  var numNum = Number(num)
   this.int  = parseInt(pieces[0], 10)
-  if (this.int < 0) {
+  if (numNum < 0) {
     this.sign = -1
     this.int  = -this.int
   } else {
@@ -145,7 +145,8 @@ function SigFigNum (num) {
     this.frac = ''
   }
   // Can't use num here because we want to remove the leading zeros, if any.
-  this.val = (this.sign * this.int).toString()
+  // Can't do 'String(this.sign * this.int) because for '-0.8' this.int is 0
+  this.val = (this.sign < 0 ? '-' : '') + String(this.int)
            + (this.accurateInt ? '.' : '') + this.frac
 
   // Significant figures calculation
