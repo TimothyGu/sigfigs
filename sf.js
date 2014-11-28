@@ -170,13 +170,13 @@ function SigFigNum (num) {
 
 function roundBySigFigs (num, a, b, logger, sigFigs) {
   if (sigFigs) {
-    log += ' sigfigs;'
+    log += ' ' + sigFigs + ' sigfigs;'
   } else {
     sigFigs = Math.min(a.sigFigs, b.sigFigs)
     log += ' ' + sigFigs + ' sigfigs (' + a.sigFigs + ' vs ' + b.sigFigs + ');'
   }
   if (sigFigs >= num.toFixed().length) {
-    var decimalPlaces = sigFigs - num.toFixed().length
+    var decimalPlaces = sigFigs - String(Math.floor(num)).length
     var str = num.toFixed(decimalPlaces)
   } else if (sigFigs === num.toFixed().length) {
     var str = num.toFixed() + '.'
