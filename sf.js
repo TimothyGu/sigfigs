@@ -111,6 +111,8 @@ function checkType (inp, prev) {
 }
 
 function SigFigNum (num) {
+  if (!num) return
+
   // Exact. 20 zeros -> IEEE 754 binary64
   num = num.replace(/([0-9]+)\.?([0-9]+)?x/, '$1.$200000000000000000000')
   var pieces = num.split('.')
@@ -118,11 +120,11 @@ function SigFigNum (num) {
     return
     // throw new Error('Error parsing "' + num + '" as a number')
   }
-  if (pieces)
 
   this.type = objTypes.NUMBER
+
   var numNum = Number(num)
-  this.int  = parseInt(pieces[0], 10)
+  this.int  = parseInt(pieces[0], /*radix*/10)
   if (numNum < 0) {
     this.sign = -1
     this.int  = -this.int
