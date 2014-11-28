@@ -176,7 +176,8 @@ function roundBySigFigs (num, a, b, logger, sigFigs) {
     log += ' ' + sigFigs + ' sigfigs (' + a.sigFigs + ' vs ' + b.sigFigs + ');'
   }
   if (sigFigs >= num.toFixed().length) {
-    var decimalPlaces = sigFigs - String(Math.floor(num)).length
+    // | 0 -> round towards zero
+    var decimalPlaces = sigFigs - String((num | 0) === 0 ? '' : Math.abs(num | 0)).length
     var str = num.toFixed(decimalPlaces)
   } else if (sigFigs === num.toFixed().length) {
     var str = num.toFixed() + '.'
