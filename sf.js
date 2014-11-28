@@ -90,7 +90,7 @@ log = ''
 function checkType (inp, prev) {
   if (/[0-9.x]/.test(inp)) {
     return objTypes.NUMBER
-  } else if (/[*\/]/.test(inp)) {
+  } else if (/[*\/×÷]/.test(inp)) {
     return objTypes.OPERATOR
   } else if (/\(/.test(inp)) {
     return objTypes.OPENPAREN
@@ -340,7 +340,7 @@ function newObj (inp, type) {
 
 function calculateShell (inp, logger) {
   // Sanitize input of non-numeric-or-operator characters
-  inp = (new String(inp)).split('').filter(/./.test.bind(/[0-9.x+\-*\/()]/))
+  inp = (new String(inp)).split('').filter(/./.test.bind(/[0-9.x+\-*\/×÷()]/))
 
   var tmp = ''
   var objs = new Parentheses()
