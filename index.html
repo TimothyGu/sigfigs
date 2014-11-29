@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html class="no-js" lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+    <title>Significant Figures-Aware Calculator</title>
+
+    <meta name="description" content="Significant Figures-Aware Calculator">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" href="css/bootstrap.min.css">
+
+    <!--[if lt IE 9]>
+      <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+      <script>window.html5 || document.write('<script src="js/vendor/html5shiv.js"><\/script>')</script>
+    <![endif]-->
+  </head>
+  <body>
+  <div class="container">
+    <h1>Significant Figures-Aware Calculator</h1>
+    <div class="input-group">
+      <input id="input" type="text" class="form-control" placeholder="1.5 + 2">
+      <span class="input-group-btn">
+        <button class="btn btn-default" type="button" onclick="submit()">Submit</button>
+      </span>
+    </div>
+    <p>Result: <span id="res"></span></p>
+    <p>Steps:<p>
+    <ul id="steps"></ul>
+    <h2>Usage</h2>
+    <p>
+      Input whatever you want to calculate. A suffix <code>x</code> denotes
+      that the number is exact and its significant figures will not be taken
+      into account. Everything other than numbers, parentheses, operators, and
+      <code>x</code> is ignored, so you can easily copy-paste from other
+      sources.
+    </p>
+    <h2>Caveats</h2>
+    <p>
+      Order of operation is not implemented, so <code>1 + 2 * 3</code> returns
+      9 instead of 6.
+    </p>
+    <h2>Examples</h2>
+    <ul>
+      <li>
+        25.000 degrees Celsius to degrees Fahenheit:
+        <code>25.000 * 1.8x + 32x</code>
+      </li>
+    </ul>
+  </div>
+  <script src="/sf.js"></script>
+  <script>
+    function submit () {
+      document.getElementById('steps').innerHTML = ''
+      var e = document.getElementById('res')
+      var input = document.getElementById('input')
+      e.innerHTML = calculateShell(input.value, function logger (msg) {
+        document.getElementById('steps').innerHTML += '<li>' + msg + '</li>'
+      }).val
+    }
+  </script>
+  </body>
+</html>
