@@ -22,60 +22,6 @@
  * THE SOFTWARE.
  */
 
-// From https://github.com/kangax/array_subclassing/blob/master/subarray.js
-// by @kangax (Juriy Zaytsev).
-var makeSubArray = (function () {
-  var MAX_SIGNED_INT_VALUE = Math.pow(2, 32) - 1
-  , hasOwnProperty = Object.prototype.hasOwnProperty
-
-  function ToUint32 (value) {
-    return value >>> 0
-  }
-
-  function getMaxIndexProperty (object) {
-    var maxIndex = -1, isValidProperty
-
-    for (var prop in object) {
-
-      isValidProperty = (
-        String(ToUint32(prop)) === prop &&
-        ToUint32(prop) !== MAX_SIGNED_INT_VALUE &&
-        hasOwnProperty.call(object, prop))
-
-      if (isValidProperty && prop > maxIndex) {
-        maxIndex = prop
-      }
-    }
-    return maxIndex
-  }
-
-  return function (methods) {
-    var length = 0
-    methods = methods || {}
-
-    methods.length = {
-      get: function () {
-        var maxIndexProperty = +getMaxIndexProperty(this)
-        return Math.max(length, maxIndexProperty + 1)
-      }
-    , set: function (value) {
-        var constrainedValue = ToUint32(value)
-        if (constrainedValue !== +value) {
-          throw new RangeError()
-        }
-        for (var i = constrainedValue, len = this.length; i < len; i++) {
-          delete this[i]
-        }
-        length = constrainedValue
-      }
-    }
-    methods.toString = {
-      value: Array.prototype.join
-    }
-    return Object.create(Array.prototype, methods)
-  }
-})()
-
 var objTypes = Object.freeze({
   UNSPECIFIED: 0
 , NUMBER     : 1
@@ -173,14 +119,13 @@ function SigFigNum (num) {
 }
 
 function roundBySigFigs (num, a, b, logger, sigFigs) {
-  if (sigFigs) {
+  if (sigFigs != null) {
     log += ' ' + sigFigs + ' sigfigs;'
   } else {
     sigFigs = Math.min(a.sigFigs, b.sigFigs)
     log += ' ' + sigFigs + ' sigfigs (' + a.sigFigs + ' vs ' + b.sigFigs + ');'
   }
   if (sigFigs >= num.toFixed().length) {
-
     if (num === 0) {
       // If a number is 0, there is one integer place.
       // This must be the first because it is an exception to the following
@@ -189,6 +134,7 @@ function roundBySigFigs (num, a, b, logger, sigFigs) {
     } else {
       var intPlaces = Math.floor(Math.log(Math.abs(num)) / Math.LN10) + 1
     }
+    
     var decimalPlaces = sigFigs - intPlaces
     var str = num.toFixed(decimalPlaces)
   } else if (sigFigs === num.toFixed().length) {
@@ -224,8 +170,8 @@ function roundByDecimalPlaces (num, a, b, logger) {
          + ' intervals ('
          + (a.mostAccurateIntPlace - 1) + ' vs '
          + (b.mostAccurateIntPlace - 1) + ') using'
-    var sigFigs = Math.abs(num).toFixed(decPlaces).length
-                - (intDecimalPlaces - 1)
+    var sigFigs = Math.max(Math.abs(num).toFixed(decPlaces).length
+                          - (intDecimalPlaces - 1), 1)
     return roundBySigFigs(num, null, null, logger, sigFigs)
   }
 }
@@ -257,120 +203,44 @@ var ops = {
   }
 }
 
-function Operation (operator) {
-  if (!operator) return
-  switch (operator) {
-  case '×':
-    operator = '*'
-    break
-  case '÷':
-    operator = '/'
-    break
-  }
-  this.op = operator
+function Operation (parent, operator) {
+  this.op = operator || ''
   this.type = objTypes.OPERATOR
-  this.arguments = new Array(2)
-}
-
-function Parentheses (parent) {
-  var arr = makeSubArray()
-  arr.val = new SigFigNum('0' /*TODO*/)
-  arr.parent = parent || null
-  arr.type = objTypes.OPENPAREN
-  arr.recalculate = function (logger) {
-    var total
-    var skip = 0
-
-    // Preemption to group multiplication together
-    if (!this.grouped) {
-      for (var i = 1; i < this.length; i++) {
-        var obj = this[i]
-        if (!obj || !obj.type || !this[i - 1]) continue
-        if (obj.type === objTypes.OPERATOR && /[*\/]/.test(obj.op)
-         && this[i + 1]) {
-          var newobj = new Parentheses(this)
-          newobj.grouped = true
-
-          // Flatten the parentheses as cloning objects with circulars is a
-          // pain.
-          if (this[i - 1].type === objTypes.OPENPAREN) {
-            var val1 = this[i - 1].recalculate(logger)
-          } else if (this[i - 1].type === objTypes.NUMBER) {
-            var val1 = this[i - 1]
-          } else {
-            throw new Error('First operand not number or paren')
-          }
-          if (this[i + 1].type === objTypes.OPENPAREN) {
-            var val2 = this[i + 1].recalculate(logger)
-          } else if (this[i + 1].type === objTypes.NUMBER) {
-            var val2 = this[i + 1]
-          } else {
-            throw new Error('Second operand not number or paren')
-          }
-          newobj.push(val1)
-          newobj.push(JSON.parse(JSON.stringify(obj)))
-          newobj.push(val2)
-          this[i - 1] = newobj
-          this[i    ] = null
-          this[i + 1] = null
-        }
-      }
+  this.operand = new Array(2)
+  this.parent = parent
+  this.val = new SigFigNum('0')
+  this.calculate = function calculate (logger) {
+    switch (this.op) {
+    case '×':
+      this.op = '*'
+      break
+    case '÷':
+      this.op = '/'
+      break
     }
-
-    var init = false
-    var calculation = ''
-    var calculating = false
-    for (var i = 0; i < this.length; i++) {
-      var obj = this[i]
-      if (!obj || !obj.type) continue
-      if (!init) {
-        if (obj.type === objTypes.NUMBER) {
-          total = JSON.parse(JSON.stringify(obj))
-        } else if (obj.type === objTypes.OPERATOR) {
-          throw new Error('bad calc')
-        } else if (obj.type === objTypes.OPENPAREN) {
-          total = obj.recalculate(logger)
-        }
-        init = true
-        continue
-      }
-      if (obj.type === objTypes.OPERATOR) {
-        if (!this[i + 1]) {
-          throw new Error('bad calc')
-        } else {
-          calculation = obj.op
-          calculating = true
-        }
-      } else if (obj.type === objTypes.NUMBER) {
-        if (!calculating) {
-          throw new Error('two numbers together' + i)
-        } else {
-          total = ops[calculation](total, obj, logger)
-        }
-      } else if (obj.type === objTypes.OPENPAREN) {
-        obj.recalculate(logger)
-        if (!calculating) {
-          throw new Error('two numbers together' + i)
-        } else {
-          total = ops[calculation](total, obj.val, logger)
-        }
-      }
+    var val1, val2
+    if (this.operand[0].type === objTypes.OPERATOR) {
+      val1 = this.operand[0].calculate(logger)
+    } else {
+      val1 = this.operand[0]
     }
-    this.val = total
+    if (this.operand[1].type === objTypes.OPERATOR) {
+      val2 = this.operand[1].calculate(logger)
+    } else {
+      val2 = this.operand[1]
+    }
+    this.val = ops[this.op](val1, val2, logger)
     return this.val
   }
-  return arr
 }
 
-function newObj (inp, type) {
-  switch (type) {
-  case objTypes.NUMBER:
-    return new SigFigNum(inp)
-    break
-  case objTypes.OPERATOR:
-    return new Operation(inp)
-    break
+function compareOperators (oldop, newop) {
+  function getMerit (op) {
+    if (/[*\/]/.test(op)) return 1
+    else                  return 0
   }
+  if (getMerit(oldop) >= getMerit(newop)) return 0
+  else                                    return 1
 }
 
 function cleanInput (inp) {
@@ -380,34 +250,82 @@ function cleanInput (inp) {
 
 function calculate (inp, logger) {
   inp = cleanInput(inp)
+  log = ''
 
   var tmp = ''
-  var objs = new Parentheses()
-  var curobjs = objs
+  var objs = new Operation(null)
+  var parent = objs
   var prevType = objTypes.UNSPECIFIED
   function flushInputNumber () {
-    curobjs.push(newObj(tmp, prevType))
+    if (objs.op === '') {
+      // _
+      // 1 + 2 + 3
+      objs.operand[0] = new SigFigNum(tmp)
+    } else {
+      if (!objs.operand[1]){
+        //     _
+        // 1 + 2 + 3
+        objs.operand[1] = new SigFigNum(tmp)
+        objs = objs.parent || objs
+      } else {
+        //           _
+        // (1 + 2) + 3
+        throw new Error('should not happen')
+      }
+    }
   }
   for (var i = 0; i < inp.length; i ++) {
     var type = checkType(inp[i], prevType)
     if (type !== prevType) {
-      if (type === objTypes.CLOSEPAREN) {
-        flushInputNumber()
-        if (!curobjs.parent) {
-          throw new Error('bad parentheses')
-        } else {
-          curobjs = curobjs.parent
-        }
-      } else if (type === objTypes.OPENPAREN) {
-        if (prevType === objTypes.NUMBER
-         || prevType === objTypes.OPERATOR) {
+      switch (type) {
+      case objTypes.CLOSEPAREN:
+        /**/
+        break
+      case objTypes.OPENPAREN:
+        //
+        break
+      default:
+        switch (prevType) {
+        case objTypes.NUMBER:
           flushInputNumber()
+          break
+        case objTypes.OPERATOR:
+          if (objs.op === '') objs.op = tmp
+          else {
+            if (!objs.operand[1]) {
+              //     _
+              // 1 + + 2
+              throw new Error('two ops together')
+            } else {
+              //       _
+              // 1 + 2 + 3
+              // We can simply just do 
+              // (1 + 2) + 3
+              //       3 + 3
+              // But using this as a learning experience.
+              var newobj = new Operation(null, tmp)
+              var opcomp = compareOperators(objs.op, tmp)
+              if (!opcomp) {
+                //       _
+                // 1 + 2 + 3
+                newobj.operand[0] = objs
+                newobj.parent = objs.parent
+                objs.parent = newobj
+                objs = newobj
+                if (newobj.parent === null) parent = newobj
+              } else {
+                //       _
+                // 1 + 2 * 3
+                newobj.operand[0] = objs.operand[1]
+                newobj.parent = objs
+                objs.operand[1] = newobj
+                objs = newobj
+              }
+            }
+          }
+          break
+        //default: throw new Error('should not happen')
         }
-        curobjs.push(new Parentheses(curobjs))
-        curobjs = curobjs[curobjs.length - 1]
-      } else if (prevType !== objTypes.UNSPECIFIED
-              && prevType !== objTypes.CLOSEPAREN) {
-        curobjs.push(newObj(tmp, prevType))
       }
       tmp = inp[i]
     } else {
@@ -419,11 +337,7 @@ function calculate (inp, logger) {
     flushInputNumber()
   }
 
-  while (curobjs !== objs) {
-    curobjs.recalculate(logger)
-    curobjs = curobjs.parent
-  }
-  return objs.recalculate(logger)
+  return parent.calculate(logger)
 }
 
 if (typeof module !== 'undefined') {
