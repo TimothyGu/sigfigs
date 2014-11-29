@@ -155,14 +155,14 @@ function SigFigNum (num) {
   // Significant figures calculation
   if (this.int === 0) {
     // If the integer part is 0, the # of sigfigs is the length of the
-    // fractional part.
-    this.sigFigs = this.frac.length
+    // fractional part not counting leading zeros.
+    this.sigFigs = this.frac.replace(/^0+/, '').length
   } else {
     // If not, and if the integer part is not accurate, strip the trailing
     // 0's before calculating significant figures.
     var intPart = this.accurateInt ? intStr : intStr.replace(/0+$/, '')
     // The # of sigfigs is the length of the integer part plus the length of
-    // fraction part, if any.
+    // fraction part.
     this.sigFigs = intPart.length + this.frac.length
   }
   // Expressed in the exponent of 10
