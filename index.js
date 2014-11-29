@@ -266,11 +266,54 @@ function calculate (inp, logger) {
         //     _
         // 1 + 2 + 3
         objs.operand[1] = new SigFigNum(tmp)
-        objs = objs.parent || objs
       } else {
         //           _
         // (1 + 2) + 3
         throw new Error('should not happen')
+      }
+    }
+  }
+  function flushInputOperator () {
+    if (objs.op === '') objs.op = tmp
+    else {
+      if (!objs.operand[1]) {
+        //     _
+        // 1 + + 2
+        throw new Error('two ops together')
+      } else {
+        //       _
+        // 1 + 2 + 3
+        // We can simply just do 
+        // (1 + 2) + 3
+        //       3 + 3
+        // But using this as a learning experience.
+        var newobj = new Operation(null, tmp)
+        newobj.index = objs.index
+        var opcomp = compareOperators(objs.op, tmp)
+        if (!opcomp) {
+          //       _
+          // 1 + 2 + 3
+
+          // TODO: factor this out
+          newobj.operand[0] = objs
+          newobj.parent = objs.parent
+          objs.parent = newobj
+          objs.index = 0
+          objs = newobj
+          if (newobj.parent === null) parent = newobj
+          else if (newobj.index != null){
+            newobj.parent.operand[newobj.index] = newobj
+          }
+        } else {
+          //       _
+          // 1 + 2 * 3
+          newobj.operand[0] = objs.operand[1]
+          newobj.parent = objs
+          objs.operand[1] = newobj
+          objs.index = 1
+
+          objs = newobj
+        }
       }
     }
   }
@@ -279,10 +322,43 @@ function calculate (inp, logger) {
     if (type !== prevType) {
       switch (type) {
       case objTypes.CLOSEPAREN:
-        /**/
+        if (prevType === objTypes.NUMBER) flushInputNumber()
+        if (!objs.op) {
+          var index = objs.index
+          objs = objs.parent
+          objs.operand[index] = objs.operand[index].operand[0]
+        } else objs = objs.parent
+        if (objs.implicit) objs = objs.parent
         break
       case objTypes.OPENPAREN:
-        //
+        if (prevType === objTypes.NUMBER)   flushInputNumber()
+        if (prevType === objTypes.OPERATOR) flushInputOperator()
+        // if (prevType === objTypes.NUMBER
+        //   || prevType === objTypes.CLOSEPAREN) {
+        //   // Add implicit multiplication
+        //   if (!objs.operand[1]) {
+        //     objs.op = '*'
+        //   } else {
+        //     var newobj = new Operation(objs.parent, '*')
+        //     newobj.index = objs.index
+        //     newobj.operand[0] = objs
+        //     newobj.implicit = true
+        //     objs.parent = newobj
+        //     objs = newobj
+        //     if (newobj.parent === null) parent = newobj
+        //     else if (newobj.index != null) newobj.parent.operand[newobj.index] = newobj
+        //   }
+        // }
+        if (objs.operand[1] || !objs.op) throw new Error('should not happen')
+        if (!objs.operand[0]) {
+          objs.operand[0] = new Operation(objs)
+          objs.operand[0].index = 0
+          objs = objs.operand[0]
+        } else {
+          objs.operand[1] = new Operation(objs)
+          objs.operand[1].index = 1
+          objs = objs.operand[1]
+        }
         break
       default:
         switch (prevType) {
@@ -290,39 +366,7 @@ function calculate (inp, logger) {
           flushInputNumber()
           break
         case objTypes.OPERATOR:
-          if (objs.op === '') objs.op = tmp
-          else {
-            if (!objs.operand[1]) {
-              //     _
-              // 1 + + 2
-              throw new Error('two ops together')
-            } else {
-              //       _
-              // 1 + 2 + 3
-              // We can simply just do 
-              // (1 + 2) + 3
-              //       3 + 3
-              // But using this as a learning experience.
-              var newobj = new Operation(null, tmp)
-              var opcomp = compareOperators(objs.op, tmp)
-              if (!opcomp) {
-                //       _
-                // 1 + 2 + 3
-                newobj.operand[0] = objs
-                newobj.parent = objs.parent
-                objs.parent = newobj
-                objs = newobj
-                if (newobj.parent === null) parent = newobj
-              } else {
-                //       _
-                // 1 + 2 * 3
-                newobj.operand[0] = objs.operand[1]
-                newobj.parent = objs
-                objs.operand[1] = newobj
-                objs = newobj
-              }
-            }
-          }
+          flushInputOperator()
           break
         //default: throw new Error('should not happen')
         }
