@@ -85,21 +85,22 @@ var objTypes = Object.freeze({
 })
 
 // Global variable yay!
-log = ''
+var log = ''
 
 function checkType (inp, prev) {
   if (/[0-9.x]/.test(inp)) {
     return objTypes.NUMBER
   } else if (/[*\/×÷]/.test(inp)) {
     return objTypes.OPERATOR
-  } else if (/\(/.test(inp)) {
+  } else if (/[{\[(]/.test(inp)) {
     return objTypes.OPENPAREN
-  } else if (/\)/.test(inp)) {
+  } else if (/[)\]}]/.test(inp)) {
     return objTypes.CLOSEPAREN
   } else if (/[+\-]/.test(inp)) {
     if (prev === objTypes.NUMBER
      || prev === objTypes.CLOSEPAREN) {
       // '1-1'
+      // ')-1'
       return objTypes.OPERATOR
     } else {
       // '(-23)'
@@ -179,8 +180,32 @@ function roundBySigFigs (num, a, b, logger, sigFigs) {
     log += ' ' + sigFigs + ' sigfigs (' + a.sigFigs + ' vs ' + b.sigFigs + ');'
   }
   if (sigFigs >= num.toFixed().length) {
-    // | 0 -> round towards zero
-    var decimalPlaces = sigFigs - String((num | 0) === 0 ? '' : Math.abs(num | 0)).length
+
+    if (num === 0) {
+      // If a number is 0, there is one integer place.
+      // This must be the first because it is an exception to the following
+      // conditional, which is an exception to the following following rule.
+      var intPlaces = 1
+    } else if ((num | 0) === 0) {
+      // If a number is not zero but its integer part is, then there are no
+      // integer places.
+      //
+      // `| 0` --> round toward zero
+      //
+      // This comparison is the only possible way to do this without using
+      // `Math.abs()`.
+      var intPlaces = 0
+    } else {
+      // See http://jsperf.com/integer-part-length
+      //
+      // Other implementations such as
+      //
+      //     String(Math.floor(Math.abs(num | 0)).length
+      //
+      // are possible, but that is slower and this is cooler.
+      var intPlaces = String(Math.abs(num | 0)).length
+    }
+    var decimalPlaces = sigFigs - intPlaces
     var str = num.toFixed(decimalPlaces)
   } else if (sigFigs === num.toFixed().length) {
     var str = num.toFixed() + '.'
@@ -199,12 +224,10 @@ function roundBySigFigs (num, a, b, logger, sigFigs) {
 function roundByDecimalPlaces (num, a, b, logger) {
   var accurateInt = a.accurateInt && b.accurateInt
   var decPlaces = Math.min(a.frac.length, b.frac.length)
-  var ret = num.toFixed(decPlaces)
   log += ' ' + decPlaces + ' fractional places '
        + '(' + a.frac.length + ' vs ' + b.frac.length + ');'
   if (accurateInt) {
-    ret += !decPlaces ? '.' : ''
-    ret = new SigFigNum(ret)
+    ret = new SigFigNum(num.toFixed(decPlaces) + !decPlaces ? '.' : '')
     log += ' integer part is guaranteed to be accurate; return ' + ret.val
     logger(log)
     log = ''
@@ -216,36 +239,52 @@ function roundByDecimalPlaces (num, a, b, logger) {
          + ' intervals ('
          + (a.mostAccurateIntPlace - 1) + ' vs '
          + (b.mostAccurateIntPlace - 1) + ') using'
-    var sigFigs = String(ret).length - (intDecimalPlaces - 1)
-    return roundBySigFigs(+ret, null, null, logger, sigFigs)
+    var sigFigs = Math.abs(num).toFixed(decPlaces).length
+                - (intDecimalPlaces - 1)
+    return roundBySigFigs(num, null, null, logger, sigFigs)
   }
 }
 
 var ops = {
   '+': function (a, b, logger) {
     var tmpNum = Number(a.val) + Number(b.val)
-    log += a.val + ' + ' + b.val + '; vanilla result ' + tmpNum
+    log += a.val + ' + ' + b.val + '; arithmetic result ' + tmpNum
          + '; addition so round by'
     return roundByDecimalPlaces(tmpNum, a, b, logger)
   }
 , '-': function (a, b, logger) {
     var tmpNum = Number(a.val) - Number(b.val)
-    log += a.val + ' - ' + b.val + '; vanilla result ' + tmpNum
+    log += a.val + ' - ' + b.val + '; arithmetic result ' + tmpNum
          + '; subtraction so round by'
     return roundByDecimalPlaces(tmpNum, a, b, logger)
   }
 , '*': function (a, b, logger) {
     var tmpNum = Number(a.val) * Number(b.val)
-    log += a.val + ' * ' + b.val + '; vanilla result ' + tmpNum
+    log += a.val + ' * ' + b.val + '; arithmetic result ' + tmpNum
          + '; multiplication so round by'
     return roundBySigFigs(tmpNum, a, b, logger)
   }
 , '/': function (a, b, logger) {
     var tmpNum = Number(a.val) / Number(b.val)
-    log += a.val + ' / ' + b.val + '; vanilla result ' + tmpNum
+    log += a.val + ' / ' + b.val + '; arithmetic result ' + tmpNum
          + '; division so round by'
     return roundBySigFigs(tmpNum, a, b, logger)
   }
+}
+
+function Operation (operator) {
+  if (!operator) return
+  switch (operator) {
+  case '×':
+    operator = '*'
+    break
+  case '÷':
+    operator = '/'
+    break
+  }
+  this.op = operator
+  this.type = objTypes.OPERATOR
+  this.arguments = new Array(2)
 }
 
 function Parentheses (parent) {
@@ -333,14 +372,18 @@ function newObj (inp, type) {
     return new SigFigNum(inp)
     break
   case objTypes.OPERATOR:
-    return {'op': inp, 'type': type}
+    return new Operation(inp)
     break
   }
 }
 
-function calculateShell (inp, logger) {
+function cleanInput (inp) {
   // Sanitize input of non-numeric-or-operator characters
-  inp = (new String(inp)).split('').filter(/./.test.bind(/[0-9.x+\-*\/×÷()]/))
+  return inp.split('').filter(/./.test.bind(/[0-9.x+\-*\/×÷{\[()\]}]/))
+}
+
+function calculate (inp, logger) {
+  inp = cleanInput(inp)
 
   var tmp = ''
   var objs = new Parentheses()
@@ -384,10 +427,9 @@ function calculateShell (inp, logger) {
     curobjs.recalculate(logger)
     curobjs = curobjs.parent
   }
-  console.log(objs)
   return objs.recalculate(logger)
 }
 
 if (typeof module !== 'undefined') {
-  module.exports = calculateShell
+  module.exports = calculate
 }
