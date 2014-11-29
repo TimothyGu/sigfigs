@@ -23,7 +23,7 @@
  * THE SOFTWARE.
  */
 
-var sf      = require('./sf.js')
+var sf      = require('./')
   , program = require('commander')
  
 program
