@@ -298,36 +298,38 @@ function Parentheses (parent) {
     var skip = 0
 
     // Preemption to make multiplication together
-    // for (var i = 1; i < this.length; i++) {
-    //   var obj = this[i]
-    //   if (obj.type === objTypes.OPERATOR && /[*\/]/.test(obj.op)
-    //    && this[i + 2]) {
-    //     var newobj = new Parentheses(this)
+    if (!this.grouped) {
+      for (var i = 1; i < this.length; i++) {
+        var obj = this[i]
+        if (!obj || !obj.type) continue
+        if (obj.type === objTypes.OPERATOR && /[*\/]/.test(obj.op)
+         && this[i + 1]) {
+          var newobj = new Parentheses(this)
+          newobj.grouped = true
 
-    //     if (this[i - 1].type === objTypes.OPENPAREN) {
-    //       var val = obj.recalculate(logger)
-    //     } else if (this[i - 1].type === objTypes.NUMBER) {
-    //       var val = obj
-    //     } else {
-    //       throw new Error('not number or paren')
-    //     }
-    //     newobj.push(this[i - 1])
-    //     newobj.push(obj)
-    //     newobj.push(this[i + 1])
-    //     this[i - 1] = newobj
-    //     this[i].type = objTypes.UNSPECIFIED
-    //     this[i + 1].type = objTypes.UNSPECIFIED
-    //   }
-    // }
+          if (this[i - 1].type === objTypes.OPENPAREN) {
+            var val = obj.recalculate(logger)
+          } else if (this[i - 1].type === objTypes.NUMBER) {
+            var val = obj
+          } else {
+            throw new Error('not number or paren')
+          }
+          newobj.push(JSON.parse(JSON.stringify(this[i - 1])))
+          newobj.push(JSON.parse(JSON.stringify(obj)))
+          newobj.push(JSON.parse(JSON.stringify(this[i + 1])))
+          this[i - 1] = newobj
+          this[i    ] = null
+          this[i + 1] = null
+        }
+      }
+    }
 
     var init = false
-    var calculation = []
+    var calculation = ''
     var calculating = false
     for (var i = 0; i < this.length; i++) {
       var obj = this[i]
-      if (!obj || !obj.type) {
-        continue
-      }
+      if (!obj || !obj.type) continue
       if (!init) {
         if (obj.type === objTypes.NUMBER) {
           total = JSON.parse(JSON.stringify(obj))
@@ -343,21 +345,21 @@ function Parentheses (parent) {
         if (!this[i + 1]) {
           throw new Error('bad calc')
         } else {
-          calculation[0] = obj.op
-          calculation[1] = total
+          calculation = obj.op
           calculating = true
         }
       } else if (obj.type === objTypes.NUMBER) {
         if (!calculating) {
           throw new Error('two numbers together' + i)
         } else {
-          total = ops[calculation[0]](calculation[1], obj, logger)
+          total = ops[calculation](total, obj, logger)
         }
       } else if (obj.type === objTypes.OPENPAREN) {
+        obj.recalculate(logger)
         if (!calculating) {
           throw new Error('two numbers together' + i)
         } else {
-          total = ops[calculation[0]](calculation[1], obj.recalculate(logger), logger)
+          total = ops[calculation](total, obj.val, logger)
         }
       }
     }
