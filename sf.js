@@ -186,24 +186,8 @@ function roundBySigFigs (num, a, b, logger, sigFigs) {
       // This must be the first because it is an exception to the following
       // conditional, which is an exception to the following following rule.
       var intPlaces = 1
-    } else if ((num | 0) === 0) {
-      // If a number is not zero but its integer part is, then there are no
-      // integer places.
-      //
-      // `| 0` --> round toward zero
-      //
-      // This comparison is the only possible way to do this without using
-      // `Math.abs()`.
-      var intPlaces = 0
     } else {
-      // See http://jsperf.com/integer-part-length
-      //
-      // Other implementations such as
-      //
-      //     String(Math.floor(Math.abs(num | 0)).length
-      //
-      // are possible, but that is slower and this is cooler.
-      var intPlaces = String(Math.abs(num | 0)).length
+      var intPlaces = Math.floor(Math.log(Math.abs(num)) / Math.LN10) + 1
     }
     var decimalPlaces = sigFigs - intPlaces
     var str = num.toFixed(decimalPlaces)
@@ -297,26 +281,35 @@ function Parentheses (parent) {
     var total
     var skip = 0
 
-    // Preemption to make multiplication together
+    // Preemption to group multiplication together
     if (!this.grouped) {
       for (var i = 1; i < this.length; i++) {
         var obj = this[i]
-        if (!obj || !obj.type) continue
+        if (!obj || !obj.type || !this[i - 1]) continue
         if (obj.type === objTypes.OPERATOR && /[*\/]/.test(obj.op)
          && this[i + 1]) {
           var newobj = new Parentheses(this)
           newobj.grouped = true
 
+          // Flatten the parentheses as cloning objects with circulars is a
+          // pain.
           if (this[i - 1].type === objTypes.OPENPAREN) {
-            var val = obj.recalculate(logger)
+            var val1 = this[i - 1].recalculate(logger)
           } else if (this[i - 1].type === objTypes.NUMBER) {
-            var val = obj
+            var val1 = this[i - 1]
           } else {
-            throw new Error('not number or paren')
+            throw new Error('First operand not number or paren')
           }
-          newobj.push(JSON.parse(JSON.stringify(this[i - 1])))
+          if (this[i + 1].type === objTypes.OPENPAREN) {
+            var val2 = this[i + 1].recalculate(logger)
+          } else if (this[i + 1].type === objTypes.NUMBER) {
+            var val2 = this[i + 1]
+          } else {
+            throw new Error('Second operand not number or paren')
+          }
+          newobj.push(val1)
           newobj.push(JSON.parse(JSON.stringify(obj)))
-          newobj.push(JSON.parse(JSON.stringify(this[i + 1])))
+          newobj.push(val2)
           this[i - 1] = newobj
           this[i    ] = null
           this[i + 1] = null
