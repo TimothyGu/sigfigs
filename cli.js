@@ -23,6 +23,15 @@
  * THE SOFTWARE.
  */
 
-var sf = require('./sf.js')
+var sf      = require('./sf.js')
+  , program = require('commander')
+ 
+program
+  .version(require('./package.json').version)
+  .usage('[-s] <calculation>')
+  .option('-s, --steps', 'echo steps of calculation to stderr')
+  .parse(process.argv)
 
-console.log(sf(process.argv[2]).val)
+console.log(sf(program.args[0], program.steps ? function(log) {
+    console.error(log)
+} : function () {}).val)

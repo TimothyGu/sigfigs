@@ -53,7 +53,7 @@
       document.getElementById('steps').innerHTML = ''
       var e = document.getElementById('res')
       var input = document.getElementById('input')
-      e.innerHTML = calculateShell(input.value, function logger (msg) {
+      e.innerHTML = calculate(input.value, function logger (msg) {
         document.getElementById('steps').innerHTML += '<li>' + msg + '</li>'
       }).val
     }

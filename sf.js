@@ -227,8 +227,9 @@ function roundByDecimalPlaces (num, a, b, logger) {
   log += ' ' + decPlaces + ' fractional places '
        + '(' + a.frac.length + ' vs ' + b.frac.length + ');'
   if (accurateInt) {
-    ret = new SigFigNum(num.toFixed(decPlaces) + !decPlaces ? '.' : '')
-    log += ' integer part is guaranteed to be accurate; return ' + ret.val
+    ret = new SigFigNum(num.toFixed(decPlaces) + (!decPlaces ? '.' : ''))
+    log += ' both integer parts are guaranteed to be accurate; return '
+         + ret.val
     logger(log)
     log = ''
     return ret
@@ -260,13 +261,13 @@ var ops = {
   }
 , '*': function (a, b, logger) {
     var tmpNum = Number(a.val) * Number(b.val)
-    log += a.val + ' * ' + b.val + '; arithmetic result ' + tmpNum
+    log += a.val + ' × ' + b.val + '; arithmetic result ' + tmpNum
          + '; multiplication so round by'
     return roundBySigFigs(tmpNum, a, b, logger)
   }
 , '/': function (a, b, logger) {
     var tmpNum = Number(a.val) / Number(b.val)
-    log += a.val + ' / ' + b.val + '; arithmetic result ' + tmpNum
+    log += a.val + ' ÷ ' + b.val + '; arithmetic result ' + tmpNum
          + '; division so round by'
     return roundBySigFigs(tmpNum, a, b, logger)
   }

@@ -1,29 +1,28 @@
 {
-  "name": "sigfigs",
-  "version": "0.0.0-alpha.1",
-  "description": "Significant figures-aware calculator",
-  "author": "Timothy Gu <timothygu99@gmail.com>",
-  "bin": {
+  "name": "sigfigs"
+, "version": "0.0.0-alpha.1"
+, "description": "Significant figures-aware calculator"
+, "author": "Timothy Gu <timothygu99@gmail.com>"
+, "bin": {
     "module-name": "./cli.js"
-  },
-  "script": {
+  }
+, "scripts": {
     "build": "cp -a node_modules/bootstrap/dist/css ."
-  },
-  "main": "sf.js",
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/TimothyGu/sigfigs"
-  },
-  "bugs": {
+  }
+, "main": "sf.js"
+, "repository": {
+    "type": "git"
+  , "url": "https://github.com/TimothyGu/sigfigs"
+  }
+, "bugs": {
     "url": "https://github.com/TimothyGu/sigfigs/issues"
-  },
-  "keywords": [
+  }
+, "keywords": [
     "math"
-  ],
-  "dependencies": {
+  ]
+, "dependencies": {
     "bootstrap": "~3.3.1"
-  },
-  "devDependencies": {},
-  "preferGlobal": true,
-  "license": "MIT"
+  , "commander": "~2.5.0"
+  }
+, "license": "MIT"
 }
