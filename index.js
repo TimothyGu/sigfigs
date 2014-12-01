@@ -295,6 +295,12 @@ function calculate (inp, logger) {
           // 1 + 2 + 3
 
           // TODO: factor this out
+          if (objs.implicit) {
+            //           _
+            // 1 + 2 * 3 + 1
+            objs.implicit = false
+            objs = objs.parent
+          }
           newobj.operand[0] = objs
           newobj.parent = objs.parent
           objs.parent = newobj
@@ -309,6 +315,7 @@ function calculate (inp, logger) {
           // 1 + 2 * 3
           newobj.operand[0] = objs.operand[1]
           newobj.parent = objs
+          newobj.implicit = true
           objs.operand[1] = newobj
           objs.index = 1
 
