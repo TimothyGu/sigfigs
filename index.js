@@ -136,7 +136,7 @@ function roundBySigFigs (num, a, b, logger, sigFigs) {
     }
     
     var decimalPlaces = sigFigs - intPlaces
-    var str = num.toFixed(decimalPlaces)
+    var str = num.toFixed(Math.min(decimalPlaces, 20))
   } else if (sigFigs === num.toFixed().length) {
     var str = num.toFixed() + '.'
   } else {
@@ -153,7 +153,7 @@ function roundBySigFigs (num, a, b, logger, sigFigs) {
 
 function roundByDecimalPlaces (num, a, b, logger) {
   var accurateInt = a.accurateInt && b.accurateInt
-  var decPlaces = Math.min(a.frac.length, b.frac.length)
+  var decPlaces = Math.min(Math.min(a.frac.length, b.frac.length), 20)
   log += ' ' + decPlaces + ' fractional places '
        + '(' + a.frac.length + ' vs ' + b.frac.length + ');'
   if (accurateInt) {
